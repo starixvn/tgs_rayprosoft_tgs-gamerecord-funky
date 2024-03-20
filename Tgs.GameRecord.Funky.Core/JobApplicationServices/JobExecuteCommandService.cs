@@ -16,15 +16,15 @@ internal class JobExecuteCommandService(
 	{
 		var currentTime = timeProvider.GetUtcNow();
 
-		var endTime = new DateTimeOffset(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, 0, 0, currentTime.Offset).AddHours(1);
+		var endTime = new DateTimeOffset(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, 0, 0, currentTime.Offset);
 		var startTime = endTime.AddHours(-6);
-
+		FunkyGameRecordMessage message;
 		do
 		{
 			var tempStartTime = startTime;
 			startTime = startTime.AddHours(+1);
 
-			var message = new FunkyGameRecordMessage
+			message = new FunkyGameRecordMessage
 			{
 				ApiUrl = command.ApiUrl,
 				UserAgent = command.UserAgent,
@@ -41,5 +41,22 @@ internal class JobExecuteCommandService(
 				cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 		} while (startTime.CompareTo(endTime) < 0);
+
+		message = new FunkyGameRecordMessage
+		{
+			ApiUrl = command.ApiUrl,
+			UserAgent = command.UserAgent,
+			Authentication = command.Authentication,
+			StartTime = startTime,
+			EndTime = new DateTimeOffset(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, currentTime.Minute, 0, currentTime.Offset)
+		};
+
+		logger.LogDebug("LogOn:{logOn} Parameters:{parameters}", DateTime.Now.ToString("u"), message);
+
+		await messageSender.PublishAsync(
+			subject: FunkyNatsConst.SchedulePublish,
+			data: Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message)),
+			cancellationToken: cancellationToken)
+			.ConfigureAwait(false);
 	}
 }

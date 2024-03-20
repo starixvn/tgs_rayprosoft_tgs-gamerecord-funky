@@ -9,7 +9,7 @@ data:
       "Logging": {
         "LogLevel": {
           "Default": "Warning",
-          "Tgs.GameRecord.JDB.Messages": "Information"
+          "Tgs.GameRecord.Funky.Messages": "Information"
         }
       },
       "GameRecord": {

@@ -1,0 +1,6 @@
+@Tgs.GameRecord.Funky_HostAddress = http://localhost:5031
+
+GET {{Tgs.GameRecord.Funky_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

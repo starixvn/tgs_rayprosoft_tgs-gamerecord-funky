@@ -104,7 +104,7 @@ internal class JobInitCommandService(
 				RecurringJob.AddOrUpdate<IHangfireUtensil>(
 					recurringJobId: recurringJobId,
 					methodCall: service => service.JobExecuteAsync(jobExecuteCommand),
-					cronExpression: "*/10 * * * *",
+					cronExpression: Cron.Minutely(),
 					options: _recurringJobOptions);
 
 				//初始化強制第一次處理

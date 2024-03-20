@@ -17,7 +17,7 @@ internal class JobExecuteCommandService(
 		var currentTime = timeProvider.GetUtcNow();
 
 		var endTime = new DateTimeOffset(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, 0, 0, currentTime.Offset).AddHours(1);
-		var startTime = endTime.AddHours(-12);
+		var startTime = endTime.AddHours(-6);
 
 		do
 		{

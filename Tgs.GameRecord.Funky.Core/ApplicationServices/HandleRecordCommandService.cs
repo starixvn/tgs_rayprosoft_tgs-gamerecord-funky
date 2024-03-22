@@ -21,6 +21,7 @@ internal class HandleRecordCommandService(
 			GameInterface.Funky.Protos.GameWagerStatus.Voided => WagerStates.Void,
 			GameInterface.Funky.Protos.GameWagerStatus.Won => WagerStates.Win,
 			GameInterface.Funky.Protos.GameWagerStatus.Loss => WagerStates.Lose,
+			GameInterface.Funky.Protos.GameWagerStatus.Draw => WagerStates.Draw,
 			_ => WagerStates.Running
 		};
 

@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tgs.GameRecord.Funky", "Tgs.GameRecord.Funky\Tgs.GameRecord.Funky.csproj", "{5D7C0AE5-7EDF-4454-A5E9-A41E258862A0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tgs.GameRecord.Funky", "Tgs.GameRecord.Funky\Tgs.GameRecord.Funky.csproj", "{5D7C0AE5-7EDF-4454-A5E9-A41E258862A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tgs.GameRecord.Funky.Common", "Tgs.GameRecord.Funky.Common\Tgs.GameRecord.Funky.Common.csproj", "{41381CB7-0CC6-49DE-AA95-50A9D318C7DF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tgs.GameRecord.Funky.Common", "Tgs.GameRecord.Funky.Common\Tgs.GameRecord.Funky.Common.csproj", "{41381CB7-0CC6-49DE-AA95-50A9D318C7DF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tgs.GameRecord.Funky.Core", "Tgs.GameRecord.Funky.Core\Tgs.GameRecord.Funky.Core.csproj", "{80710617-580E-4521-B323-1385A2C964AF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tgs.GameRecord.Funky.Core", "Tgs.GameRecord.Funky.Core\Tgs.GameRecord.Funky.Core.csproj", "{80710617-580E-4521-B323-1385A2C964AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tgs.GameRecord.Funky.Core.UnitTest", "Tgs.GameRecord.Funky.Core.UnitTest\Tgs.GameRecord.Funky.Core.UnitTest.csproj", "{BA278FB2-E759-4FEC-B429-8CF45F308EC3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{80710617-580E-4521-B323-1385A2C964AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80710617-580E-4521-B323-1385A2C964AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80710617-580E-4521-B323-1385A2C964AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA278FB2-E759-4FEC-B429-8CF45F308EC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA278FB2-E759-4FEC-B429-8CF45F308EC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA278FB2-E759-4FEC-B429-8CF45F308EC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA278FB2-E759-4FEC-B429-8CF45F308EC3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

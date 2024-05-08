@@ -19,6 +19,7 @@ internal class JobExecuteCommandService(
 		: options.Value.IntervalMinutesMinimum > options.Value.IntervalMinutes
 		? options.Value.IntervalMinutesMinimum
 		: options.Value.IntervalMinutes;
+
 	public async ValueTask ExecuteAsync(JobExecuteCommand command, CancellationToken cancellationToken = default)
 	{
 		var currentTime = timeProvider.GetUtcNow();

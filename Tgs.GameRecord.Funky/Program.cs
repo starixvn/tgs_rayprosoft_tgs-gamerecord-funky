@@ -11,6 +11,7 @@ using Tgs.GameRecord.Funky;
 using Tgs.GameRecord.Funky.Common;
 using Tgs.GameRecord.Funky.Core;
 using Tgs.GameRecord.Funky.Messages;
+using Tgs.MessageQueue.Nats.Serializers;
 
 var filterInstrumentations = new[] { "html", "ico", "png", "jpg" };
 
@@ -93,13 +94,14 @@ builder.Services.AddGameRecord(
 builder.Services
 	.AddKeyedSingleton("Nats", (sp, _) => new NatsConnection(NatsOpts.Default with
 	{
-		Url = builder.Configuration.GetConnectionString("Nats")!
+		Url = builder.Configuration.GetConnectionString("Nats")!,
+		SerializerRegistry = TgsNatsSerializerRegistration.Default
 	}))
 	.AddMessageQueue()
 	.AddNatsMessageQueue(config => config
 		.ConfigureResolveConnection(sp => sp.GetRequiredKeyedService<NatsConnection>("Nats"))
-		.AddHandler<GameRecordScheduleMessageHandler>(FunkyNatsConst.SchedulePublish, FunkyNatsConst.SchedulePublish)
-		.AddHandler<GameRecordManualMessageHandler>(FunkyNatsConst.ManualPublish, FunkyNatsConst.ManualPublish))
+		.AddHandler<ScheduleMessageHandler>(FunkyNatsConst.SchedulePublish, FunkyNatsConst.SchedulePublish)
+		.AddHandler<ManualMessageHandler>(FunkyNatsConst.ManualPublish, FunkyNatsConst.ManualPublish))
 	.ClearAllExchanges()
 	.AddNatsGlobPatternExchange("*");
 

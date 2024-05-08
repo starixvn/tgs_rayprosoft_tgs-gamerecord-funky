@@ -1,19 +1,20 @@
 ﻿using System.Text.Json.Nodes;
-using System.Threading;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Tgs.GameInterface.Funky.Protos;
 using Tgs.GameRecord.Funky.Core.ApplicationServices;
-using Tgs.GameRecord.Handle.Client;
-using Tgs.GameRecord.Handle.Common.Protos;
+using Valhalla.MessageQueue;
 
 namespace Tgs.GameRecord.Funky.Core.UnitTest.ApplicationServices;
+
 public class HandleRecordCommandServiceUnitTest
 {
 	[Fact]
-	public async void Win()
+	public async Task Loss()
 	{
+		var faceLogger = NullLogger<HandleRecordCommandService>.Instance;
 		var gameRecordInfo = Options.Create(new GameRecordInfoOptions
 		{
 			GameProviderCode = "FUNKY",
@@ -24,7 +25,7 @@ public class HandleRecordCommandServiceUnitTest
 			IntervalMinutesMax = 60d,
 			IntervalMinutesMinimum = 1d
 		});
-		var fakeClient = Substitute.For<IGameRecordHandleClient>();
+		var fakeMessageSender = Substitute.For<IMessageSender>();
 
 		var command = new HandleRecordCommand(
 			GameWager: new GameWagerInfo
@@ -58,27 +59,43 @@ public class HandleRecordCommandServiceUnitTest
 			});
 
 		var service = new HandleRecordCommandService(
+			faceLogger,
 			gameRecordInfo,
-			fakeClient);
+			fakeMessageSender);
 
 		await service.ExecuteAsync(command);
 
-		await fakeClient.MessageAsync(
-			gameProviderCode: Arg.Is(gameRecordInfo.Value.GameProviderCode),
-			playerCode: Arg.Is(command.GameWager.PlayerCode),
-			wagerState: Arg.Is(WagerStates.Lose),
-			externalRoundId: Arg.Is(command.GameWager.ExternalWagerId),
-			externalWagerId: Arg.Is(command.GameWager.ExternalWagerId),
-			externalGameId: Arg.Is(command.GameWager.ExternalGameId),
-			externalCreatedOn: Arg.Is(command.GameWager.ExternalCreatedOn.ToDateTimeOffset()),
-			externalClosedOn: Arg.Is(command.GameWager.ExternalClosedOn.ToDateTimeOffset()),
-			bet: Arg.Is(command.GameWager.Bet.ToDecimal().GetValueOrDefault(0)),
-			validBet: Arg.Is(command.GameWager.ValidBet.ToDecimal().GetValueOrDefault(0)),
-			settle: Arg.Is(command.GameWager.Settle.ToDecimal().GetValueOrDefault(0)),
-			commission: Arg.Is(0.0m),
-			turnover: Arg.Is(command.GameWager.ValidBet.ToDecimal().GetValueOrDefault(0)),
-			winLoss: Arg.Is(command.GameWager.WinLoss.ToDecimal().GetValueOrDefault(0)),
-			additionalData: Arg.Is(JsonNode.Parse(command.GameWager.AdditionalData)!),
+		_ = fakeMessageSender
+			.Received(1)
+			.PublishAsync(
+			subject: Arg.Is(Handle.Common.GameRecordHandleNatsConst.GameRecordHandleRequest),
+			data: Arg.Is(new Handle.Common.Protos.GameRecordHandleRequest
+			{
+				GameProviderCode = gameRecordInfo.Value.GameProviderCode,
+				PlayerCode = command.GameWager.PlayerCode,
+				ExternalRoundId = command.GameWager.ExternalWagerId,
+				ExternalBetId = command.GameWager.ExternalWagerId,
+				ExternalGameId = command.GameWager.ExternalGameId,
+				ExternalCreatedOn = command.GameWager.ExternalCreatedOn,
+				ExternalClosedOn = command.GameWager.ExternalClosedOn,
+				ExternalPayoffOn = command.GameWager.ExternalClosedOn,
+				ExternalResettleOn = DateTimeOffset.UnixEpoch.ToTimestamp(),
+				BetState = Handle.Common.Protos.BetState.Loss,
+				BetType = Handle.Common.Protos.BetType.Normal,
+				FreeGameState = Handle.Common.Protos.FreeGameState.None,
+				GambleState = Handle.Common.Protos.GambleState.None,
+				CashoutState = Handle.Common.Protos.CashoutState.None,
+				ResettleState = Handle.Common.Protos.ResettleState.None,
+				JackpotState = Handle.Common.Protos.JackpotState.None,
+				Bet = command.GameWager.Bet.ToDecimal().GetValueOrDefault(0),
+				ValidBet = command.GameWager.ValidBet.ToDecimal().GetValueOrDefault(0),
+				Settle = command.GameWager.Settle.ToDecimal().GetValueOrDefault(0),
+				Commission = 0.0m,
+				Turnover = command.GameWager.ValidBet.ToDecimal().GetValueOrDefault(0),
+				WinLoss = command.GameWager.WinLoss.ToDecimal().GetValueOrDefault(0),
+				Jackpot = 0.0M,
+				AdditionalData = command.GameWager.AdditionalData
+			}),
 			cancellationToken: Arg.Any<CancellationToken>());
 	}
 }

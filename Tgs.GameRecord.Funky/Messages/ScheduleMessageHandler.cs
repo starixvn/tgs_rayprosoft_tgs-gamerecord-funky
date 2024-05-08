@@ -7,8 +7,8 @@ using Valhalla.MessageQueue;
 
 namespace Tgs.GameRecord.Funky.Messages;
 
-public class GameRecordManualMessageHandler(
-	ILogger<GameRecordManualMessageHandler> logger,
+public class ScheduleMessageHandler(
+	ILogger<ScheduleMessageHandler> logger,
 	ICommandService<PullRecordCommand> service) : IMessageHandler<ReadOnlyMemory<byte>>
 {
 	public ValueTask HandleAsync(string subject, ReadOnlyMemory<byte> data, IEnumerable<MessageHeaderValue>? headerValues, CancellationToken cancellationToken = default)

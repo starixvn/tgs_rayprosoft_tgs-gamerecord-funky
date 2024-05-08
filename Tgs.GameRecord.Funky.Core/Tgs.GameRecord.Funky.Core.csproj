@@ -13,6 +13,7 @@
     <PackageReference Include="Hangfire.Redis.StackExchange" Version="1.9.3" />
     <PackageReference Include="PhoenixToolkits.MessageQueue" Version="2.2.0" />
     <PackageReference Include="PhoenixToolkits.MessageQueue.Nats" Version="2.2.0" />
+    <PackageReference Include="PhoenixToolkits.Protobuf.ExtendTypes" Version="0.0.7" />
     <PackageReference Include="StackExchange.Redis" Version="2.7.33" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
     <PackageReference Include="Tgs.GameCommand.Client" Version="0.0.11" />

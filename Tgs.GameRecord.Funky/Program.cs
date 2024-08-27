@@ -7,6 +7,7 @@ using NATS.Client.Core;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Tgs.GameRecord.FaChai.Core;
 using Tgs.GameRecord.Funky;
 using Tgs.GameRecord.Funky.Common;
 using Tgs.GameRecord.Funky.Core;
@@ -43,12 +44,7 @@ builder.Services
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-	var xmlFileNames = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.xml");
-	foreach (var xmlFileName in xmlFileNames)
-		c.IncludeXmlComments(xmlFileName);
-});
+builder.Services.AddSwaggerGen();
 
 var _gameRecordInfo = builder.Configuration.GetSection("GameRecordInfo").Get<GameRecordInfoOptions>()!;
 
@@ -69,27 +65,47 @@ builder.Services.AddHangfire(
 	})
 	.AddHangfireServer();
 
-builder.Services.AddGameRecord(
-	(options, sp) =>
+builder.Services
+	.AddOptions<RedisOptions>()
+	.Configure((RedisOptions options, IServiceProvider sp) =>
 	{
 		var configuration = sp.GetRequiredService<IConfiguration>();
 		options.ConnectionString = configuration.GetConnectionString("Redis")!;
-	},
-	(options, sp) =>
+	})
+	.Services
+	.AddOptions<GameRecordInfoOptions>()
+	.Configure((GameRecordInfoOptions options, IServiceProvider sp) =>
 	{
 		var configuration = sp.GetRequiredService<IConfiguration>();
 		configuration.GetSection("GameRecordInfo").Bind(options);
-	},
-	(options, sp) =>
+	})
+	.Services
+	.AddOptions<PolicySettingsOptions>()
+	.Configure((PolicySettingsOptions options, IServiceProvider sp) =>
+	{
+		var configuration = sp.GetRequiredService<IConfiguration>();
+		configuration.GetSection("PolicySettings").Bind(options);
+	})
+	.Services
+	.AddSingleton<RedisConnectionManager>()
+	.AddSingleton(TimeProvider.System)
+	.AddGameCommandClient((options, sp) =>
 	{
 		var configuration = sp.GetRequiredService<IConfiguration>();
 		options.BaseUrl = configuration.GetValue<Uri>("GameRecord:GameCommandClientBaseUrl")!;
-	},
-	(options, sp) =>
+	})
+	.AddGameInterfaceFunkyClient((options, sp) =>
 	{
 		var configuration = sp.GetRequiredService<IConfiguration>();
 		options.BaseUrl = configuration.GetValue<Uri>("GameRecord:GameInterfaceClientBaseUrl")!;
-	});
+	})
+	.AddGameRecordHandleClient(httpClientBuilder => httpClientBuilder.ConfigureHttpClient((sp, http) =>
+	{
+		var config = sp.GetRequiredService<IConfiguration>();
+		http.BaseAddress = config.GetValue<Uri>("GameRecord:GameRecordHandleClientBaseUrl");
+	}))
+	.AddGameRecordCore()
+	.AddGameRecordRepository(redisDatabaseResolver: (sp) => sp.GetRequiredService<RedisConnectionManager>().Database);
 
 builder.Services
 	.AddKeyedSingleton("Nats", (sp, _) => new NatsConnection(NatsOpts.Default with
@@ -103,7 +119,8 @@ builder.Services
 		.AddHandler<ScheduleMessageHandler>(FunkyNatsConst.SchedulePublish, FunkyNatsConst.SchedulePublish)
 		.AddHandler<ManualMessageHandler>(FunkyNatsConst.ManualPublish, FunkyNatsConst.ManualPublish))
 	.ClearAllExchanges()
-	.AddNatsGlobPatternExchange("*");
+	.AddNatsGlobPatternExchange(FunkyNatsConst.SchedulePublish)
+	.AddNatsGlobPatternExchange(FunkyNatsConst.ManualPublish);
 
 builder.Services
 	.AddOpenTelemetry()
@@ -147,10 +164,10 @@ app.UseHangfireDashboard(
 	"/hangfire",
 	new DashboardOptions()
 	{
-		Authorization = new[]
-		{
+		Authorization =
+		[
 			new IgnoreHangfireAuthorizationFilter()
-		}
+		]
 	});
 
 _ = app.UseAuthorization();

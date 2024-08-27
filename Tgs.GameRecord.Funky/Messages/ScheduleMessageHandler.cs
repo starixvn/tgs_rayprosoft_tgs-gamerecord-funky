@@ -1,5 +1,4 @@
-﻿using System.Text;
-using System.Text.Json;
+﻿using System.Text.Json;
 using Tgs.GameRecord.Funky.Common;
 using Tgs.GameRecord.Funky.Core.ApplicationServices;
 using Tgs.ServiceUtility;
@@ -13,8 +12,7 @@ public class ScheduleMessageHandler(
 {
 	public ValueTask HandleAsync(string subject, ReadOnlyMemory<byte> data, IEnumerable<MessageHeaderValue>? headerValues, CancellationToken cancellationToken = default)
 	{
-		var json = Encoding.UTF8.GetString(data.Span);
-		var message = JsonSerializer.Deserialize<FunkyGameRecordMessage>(json)
+		var message = JsonSerializer.Deserialize<FunkyGameRecordMessage>(data.Span)
 			?? throw new NullReferenceException("The request data resolves to a null value");
 
 		logger.LogInformation("LogOn:{logOn} Subject:{subject} Information Request:{message}",

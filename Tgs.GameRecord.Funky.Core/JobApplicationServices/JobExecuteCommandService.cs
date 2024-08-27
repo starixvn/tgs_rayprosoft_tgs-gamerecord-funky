@@ -14,11 +14,10 @@ internal class JobExecuteCommandService(
 	TimeProvider timeProvider,
 	IMessageSender messageSender) : ICommandService<JobExecuteCommand>
 {
-	private readonly double _intervalMinutes = options.Value.IntervalMinutesMax < options.Value.IntervalMinutes
-		? options.Value.IntervalMinutesMax
-		: options.Value.IntervalMinutesMinimum > options.Value.IntervalMinutes
-		? options.Value.IntervalMinutesMinimum
-		: options.Value.IntervalMinutes;
+	private readonly double _intervalMinutes = Math.Clamp(
+		value: options.Value.IntervalMinutes,
+		min: options.Value.IntervalMinutesMinimum,
+		max: options.Value.IntervalMinutesMax);
 
 	public async ValueTask ExecuteAsync(JobExecuteCommand command, CancellationToken cancellationToken = default)
 	{
@@ -36,11 +35,25 @@ internal class JobExecuteCommandService(
 			EndTime = endTime
 		};
 
-		logger.LogDebug("LogOn:{logOn} Parameters:{parameters}", DateTime.Now.ToString("u"), message);
+		logger.LogInformation("{logInformation}",
+			JsonSerializer.Serialize(new
+			{
+				LogOn = DateTime.Now.ToString("u"),
+				Subject = FunkyNatsConst.SchedulePublish,
+				Data = new
+				{
+					message.ApiUrl,
+					message.Authentication,
+					message.UserAgent,
+					StartTime = message.StartTime.ToString("u"),
+					EndTime = message.EndTime.ToString("u")
+				},
+				Message = "This message publishing handler."
+			}));
 
 		await messageSender.PublishAsync(
 			subject: FunkyNatsConst.SchedulePublish,
-			data: Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message)),
+			data: JsonSerializer.SerializeToUtf8Bytes(message),
 			cancellationToken: cancellationToken)
 			.ConfigureAwait(false);
 	}

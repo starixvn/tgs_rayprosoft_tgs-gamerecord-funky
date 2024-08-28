@@ -1,17 +1,20 @@
-﻿using Google.Protobuf.WellKnownTypes;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
+using Tgs.GameRecord.FaChai.Core;
+using Tgs.GameRecord.Handle.Client;
 using Tgs.ServiceUtility;
-using Valhalla.MessageQueue;
 
 namespace Tgs.GameRecord.Funky.Core.ApplicationServices;
 
 internal class HandleRecordCommandService(
 	ILogger<HandleRecordCommandService> logger,
-	IOptions<GameRecordInfoOptions> options,
-	IMessageSender messageSender) : ICommandService<HandleRecordCommand>
+	IOptions<GameRecordInfoOptions> gameRecordInfoOptions,
+	IOptions<PolicySettingsOptions> policySettingsOptions,
+	IGameRecordHandleClient client) : ICommandService<HandleRecordCommand>
 {
-	private readonly GameRecordInfoOptions _gameRecordInfo = options.Value;
+	private readonly GameRecordInfoOptions _gameRecordInfoOptions = gameRecordInfoOptions.Value;
+	private readonly PolicySettingsOptions _policySettingsOptions = policySettingsOptions.Value;
 
 	public async ValueTask ExecuteAsync(HandleRecordCommand command, CancellationToken cancellationToken = default)
 	{
@@ -40,17 +43,17 @@ internal class HandleRecordCommandService(
 			settle = command.GameWager.Settle.ToDecimal().GetValueOrDefault(0);
 		}
 
-		var request = new Handle.Common.Protos.GameRecordHandleRequest
+		var source = new Handle.Common.ViewModels.GameRecordHandleViewModel
 		{
-			GameProviderCode = _gameRecordInfo.GameProviderCode,
+			GameProviderCode = _gameRecordInfoOptions.GameProviderCode,
 			PlayerCode = command.GameWager.PlayerCode,
 			ExternalRoundId = command.GameWager.ExternalWagerId,
 			ExternalBetId = command.GameWager.ExternalWagerId,
 			ExternalGameId = command.GameWager.ExternalGameId,
-			ExternalCreatedOn = externalCreatedOn.ToTimestamp(),
-			ExternalClosedOn = externalClosedOn.ToTimestamp(),
-			ExternalPayoffOn = externalClosedOn.ToTimestamp(),
-			ExternalResettleOn = DateTimeOffset.UnixEpoch.ToTimestamp(),
+			ExternalCreatedOn = externalCreatedOn,
+			ExternalClosedOn = externalClosedOn,
+			ExternalPayoffOn = externalClosedOn,
+			ExternalResettleOn = DateTimeOffset.UnixEpoch,
 			BetState = betState,
 			BetType = Handle.Common.Protos.BetType.Normal,
 			FreeGameState = Handle.Common.Protos.FreeGameState.None,
@@ -68,25 +71,36 @@ internal class HandleRecordCommandService(
 			AdditionalData = command.GameWager.AdditionalData
 		};
 
-		await messageSender.PublishAsync(
-			subject: Handle.Common.GameRecordHandleNatsConst.GameRecordHandleRequest,
-			data: request,
-			cancellationToken: cancellationToken)
-			.ConfigureAwait(false);
+		var retryCount = _policySettingsOptions.RetryCount;
+		var retrySeconds = _policySettingsOptions.RetrySeconds;
+		var retryPolicy = Policy
+			.Handle<HttpRequestException>()
+			.WaitAndRetryAsync(
+				retryCount: retryCount,
+				retryAttempt => TimeSpan.FromSeconds(Math.Pow(retrySeconds, retryAttempt)),
+				onRetry: (exception, retryTime, retryCount, context) => logger.LogWarning(exception, "{logWarning}",
+					new
+					{
+						LogOn = DateTime.Now.ToString("u"),
+						RetryTime = retryTime,
+						RetryCount = retryCount,
+						Data = new
+						{
+							source.GameProviderCode,
+							source.PlayerCode,
+							source.ExternalRoundId,
+							source.ExternalBetId,
+							source.ExternalGameId,
+							ExternalCreatedOn = source.ExternalCreatedOn.ToString("u"),
+							ExternalClosedOn = source.ExternalClosedOn.ToString("u"),
+							source.BetState
+						},
+						exception.Message
+					}));
 
-		logger.LogInformation("LogOn:{logOn} Subject:{subject} Mesaage:This publication requests information.({request})",
-			DateTime.Now.ToString("o"),
-			Handle.Common.GameRecordHandleNatsConst.GameRecordHandleRequest,
-			new
-			{
-				request.GameProviderCode,
-				request.PlayerCode,
-				request.ExternalRoundId,
-				request.ExternalBetId,
-				request.ExternalGameId,
-				ExternalCreatedOn = request.ExternalCreatedOn.ToDateTimeOffset(),
-				ExternalClosedOn = request.ExternalClosedOn.ToDateTimeOffset(),
-				request.BetState
-			});
+		await retryPolicy.ExecuteAsync(() => client.HandleAsync(
+			source: source,
+			cancellationToken: cancellationToken).AsTask())
+			.ConfigureAwait(false);
 	}
 }

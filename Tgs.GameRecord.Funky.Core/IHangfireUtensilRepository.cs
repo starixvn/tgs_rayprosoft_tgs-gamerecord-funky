@@ -2,7 +2,7 @@
 
 namespace Tgs.GameRecord.Funky.Core;
 
-public interface IHangfireUtensil
+public interface IHangfireUtensilRepository
 {
 	public Task JobCheckAsync();
 

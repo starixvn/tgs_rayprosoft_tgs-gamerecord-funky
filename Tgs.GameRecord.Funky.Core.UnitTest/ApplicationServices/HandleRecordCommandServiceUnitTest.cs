@@ -4,7 +4,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Tgs.GameInterface.Funky.Protos;
+using Tgs.GameRecord.FaChai.Core;
 using Tgs.GameRecord.Funky.Core.ApplicationServices;
+using Tgs.GameRecord.Handle.Client;
 using Valhalla.MessageQueue;
 
 namespace Tgs.GameRecord.Funky.Core.UnitTest.ApplicationServices;
@@ -15,7 +17,7 @@ public class HandleRecordCommandServiceUnitTest
 	public async Task Loss()
 	{
 		var faceLogger = NullLogger<HandleRecordCommandService>.Instance;
-		var gameRecordInfo = Options.Create(new GameRecordInfoOptions
+		var fakeGameRecordInfoOptions = Options.Create(new GameRecordInfoOptions
 		{
 			GameProviderCode = "FUNKY",
 			GameProviderConfiguration = "FUNKYConfiguration",
@@ -25,7 +27,12 @@ public class HandleRecordCommandServiceUnitTest
 			IntervalMinutesMax = 60d,
 			IntervalMinutesMinimum = 1d
 		});
-		var fakeMessageSender = Substitute.For<IMessageSender>();
+		var fakePolicySettingsOptions = Options.Create(new PolicySettingsOptions
+		{
+			RetryCount = 1,
+			RetrySeconds = 1,
+		});
+		var fakeGameRecordHandleClient = Substitute.For<IGameRecordHandleClient>();
 
 		var command = new HandleRecordCommand(
 			GameWager: new GameWagerInfo
@@ -58,28 +65,28 @@ public class HandleRecordCommandServiceUnitTest
 				}.ToJsonString()
 			});
 
-		var service = new HandleRecordCommandService(
+		var sut = new HandleRecordCommandService(
 			faceLogger,
-			gameRecordInfo,
-			fakeMessageSender);
+			fakeGameRecordInfoOptions,
+			fakePolicySettingsOptions,
+			fakeGameRecordHandleClient);
 
-		await service.ExecuteAsync(command);
+		await sut.ExecuteAsync(command);
 
-		_ = fakeMessageSender
+		_ = fakeGameRecordHandleClient
 			.Received(1)
-			.PublishAsync(
-			subject: Arg.Is(Handle.Common.GameRecordHandleNatsConst.GameRecordHandleRequest),
-			data: Arg.Is(new Handle.Common.Protos.GameRecordHandleRequest
+			.HandleAsync(
+			source: Arg.Is(new Handle.Common.ViewModels.GameRecordHandleViewModel
 			{
-				GameProviderCode = gameRecordInfo.Value.GameProviderCode,
+				GameProviderCode = fakeGameRecordInfoOptions.Value.GameProviderCode,
 				PlayerCode = command.GameWager.PlayerCode,
 				ExternalRoundId = command.GameWager.ExternalWagerId,
 				ExternalBetId = command.GameWager.ExternalWagerId,
 				ExternalGameId = command.GameWager.ExternalGameId,
-				ExternalCreatedOn = command.GameWager.ExternalCreatedOn,
-				ExternalClosedOn = command.GameWager.ExternalClosedOn,
-				ExternalPayoffOn = command.GameWager.ExternalClosedOn,
-				ExternalResettleOn = DateTimeOffset.UnixEpoch.ToTimestamp(),
+				ExternalCreatedOn = command.GameWager.ExternalCreatedOn.ToDateTimeOffset(),
+				ExternalClosedOn = command.GameWager.ExternalClosedOn.ToDateTimeOffset(),
+				ExternalPayoffOn = command.GameWager.ExternalClosedOn.ToDateTimeOffset(),
+				ExternalResettleOn = DateTimeOffset.UnixEpoch,
 				BetState = Handle.Common.Protos.BetState.Loss,
 				BetType = Handle.Common.Protos.BetType.Normal,
 				FreeGameState = Handle.Common.Protos.FreeGameState.None,

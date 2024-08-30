@@ -27,5 +27,4 @@ public record FunkyGameRecordMessage
 	[DataType(DataType.DateTime)]
 	[DefaultValue(typeof(DateTimeOffset), "2024-03-19T04:00:00+00:00")]
 	public DateTimeOffset EndTime { get; init; }
-
 }
